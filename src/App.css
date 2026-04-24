@@ -1,0 +1,6 @@
+/* App.css is now mostly redundant due to Tailwind CSS */
+/* Custom utility classes or complex animations can go here if needed */
+
+#root {
+  width: 100%;
+}
