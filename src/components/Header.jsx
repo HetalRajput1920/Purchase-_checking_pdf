@@ -9,9 +9,9 @@ const Header = ({ onLogout, isScanningMode, fileName, connectionStatus, onReset,
   useEffect(() => {
     const handleKeyDown = (e) => {
       // Focus search input on 'f' key press, only if not already typing in an input
-      if (e.key.toLowerCase() === 'f' && 
-          document.activeElement.tagName !== 'INPUT' && 
-          document.activeElement.tagName !== 'TEXTAREA') {
+      if (e.key.toLowerCase() === 'f' &&
+        document.activeElement.tagName !== 'INPUT' &&
+        document.activeElement.tagName !== 'TEXTAREA') {
         if (hasData) {
           e.preventDefault();
           searchInputRef.current?.focus();
@@ -50,13 +50,13 @@ const Header = ({ onLogout, isScanningMode, fileName, connectionStatus, onReset,
           {/* Supplier Display in Header */}
           {selectedSupplier && (
             <div className="hidden xl:flex items-center gap-4 pl-6 border-l border-gray-200/60 ml-2 animate-in fade-in slide-in-from-left-4 duration-500">
-               <div className="flex flex-col">
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600">Supplier</span>
-                  <div className="flex items-center gap-1.5 text-gray-700 mt-0.5">
-                    <Building2 size={14} className="text-indigo-400" />
-                    <span className="text-sm font-bold truncate max-w-[250px]">{selectedSupplier.Name}</span>
-                  </div>
-               </div>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600">Supplier</span>
+                <div className="flex items-center gap-1.5 text-gray-700 mt-0.5">
+                  <Building2 size={14} className="text-indigo-400" />
+                  <span className="text-sm font-bold truncate max-w-[250px]">{selectedSupplier.Name}</span>
+                </div>
+              </div>
             </div>
           )}
 
@@ -77,11 +77,11 @@ const Header = ({ onLogout, isScanningMode, fileName, connectionStatus, onReset,
 
               {isScanningMode && (
                 <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-[0.1em] shadow-inner ${connectionStatus === 'connected' ? 'bg-green-50/50 border-green-200 text-green-700' :
-                    connectionStatus === 'error' ? 'bg-red-50/50 border-red-200 text-red-700' :
-                      'bg-yellow-50/50 border-yellow-200 text-yellow-700'
+                  connectionStatus === 'error' ? 'bg-red-50/50 border-red-200 text-red-700' :
+                    'bg-yellow-50/50 border-yellow-200 text-yellow-700'
                   }`}>
                   <span className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]' :
-                      connectionStatus === 'error' ? 'bg-red-500' : 'bg-yellow-500'
+                    connectionStatus === 'error' ? 'bg-red-500' : 'bg-yellow-500'
                     }`} />
                   {connectionStatus === 'connected' ? 'Live Matcher' : 'Offline'}
                 </div>
@@ -113,10 +113,10 @@ const Header = ({ onLogout, isScanningMode, fileName, connectionStatus, onReset,
             type="file"
             ref={fileInputRef}
             className="hidden"
-            accept="application/pdf"
+            accept="application/pdf, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
             onChange={handleFileChange}
           />
-          
+
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={hasData || isUploading || !selectedSupplier}
@@ -130,7 +130,7 @@ const Header = ({ onLogout, isScanningMode, fileName, connectionStatus, onReset,
             ) : (
               <FileText size={16} />
             )}
-            <span>{isUploading ? 'Extracting...' : 'Upload PDF'}</span>
+            <span>{isUploading ? 'Extracting...' : 'Upload File'}</span>
           </button>
 
           {hasData && (

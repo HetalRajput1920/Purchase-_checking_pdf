@@ -1,22 +1,95 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Package, CheckCircle, Hash, MousePointer2, IndianRupee, Target, ChevronRight, ChevronDown, Layers, Plus, Minus, Timer, Trophy, Send, Loader2, FileText } from 'lucide-react';
+import { Package, CheckCircle, Hash, MousePointer2, Target, ChevronRight, ChevronDown, Layers, Plus, Minus, Timer, Trophy, Send, Loader2, FileText } from 'lucide-react';
 
 const parseQty = (qtyStr) => {
   if (typeof qtyStr !== 'string') return parseInt(qtyStr) || 0;
   return qtyStr.split('+').reduce((acc, part) => acc + (parseInt(part.trim()) || 0), 0);
 };
 
-const ItemTable = ({ items, isScanningMode, searchTerm, onUpdateQty, onAddBatch, onConfirmAndSave, onFinishScanning, isSending, billNo }) => {
+const EditableCell = ({ value, onSave, type = "text", className = "" }) => {
+  const [isEditing, setIsEditing] = React.useState(false);
+  const [currentValue, setCurrentValue] = React.useState(value);
+
+  React.useEffect(() => {
+    setCurrentValue(value);
+  }, [value]);
+
+  const handleBlur = () => {
+    setIsEditing(false);
+    if (currentValue !== value) {
+      onSave(currentValue);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleBlur();
+    } else if (e.key === 'Escape') {
+      setIsEditing(false);
+      setCurrentValue(value);
+    }
+  };
+
+  if (isEditing) {
+    return (
+      <input
+        autoFocus
+        type={type}
+        step={type === "number" ? "any" : undefined}
+        className={`w-full px-2 py-1 text-gray-900 border border-blue-500 rounded outline-none bg-white font-bold ${className}`}
+        value={currentValue}
+        onChange={(e) => setCurrentValue(e.target.value)}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        onClick={(e) => e.stopPropagation()}
+      />
+    );
+  }
+
+  return (
+    <div 
+      className={`cursor-pointer hover:bg-blue-400/20 rounded px-2 py-1 transition-all border border-transparent hover:border-blue-400/30 ${className}`}
+      onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
+    >
+      {value}
+    </div>
+  );
+};
+
+const ItemTable = ({ items, isScanningMode, searchTerm, onUpdateQty, onAddBatch, onUpdateItemField, onConfirmAndSave, onFinishScanning, isSending, billNo }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const totalItems = items.length;
   const totalTargetQty = items.reduce((acc, item) => acc + parseQty(item.qty) + (parseInt(item.fqty) || 0), 0);
   const totalScanned = items.reduce((acc, item) => acc + (parseInt(item.scannedQty) || 0), 0);
-  const totalBillValue = items.reduce((acc, item) => {
-    const qty = parseQty(item.qty) + (parseInt(item.fqty) || 0);
-    const mrp = typeof item.mrp === 'number' ? item.mrp : parseFloat(item.mrp || 0);
-    return acc + (qty * mrp);
-  }, 0);
+
+  const [expandedGroups, setExpandedGroups] = useState(new Set());
+
+  const groupedItems = useMemo(() => {
+    const groups = new Map();
+    items.forEach(item => {
+      const name = item.itemName;
+      if (!groups.has(name)) {
+        groups.set(name, []);
+      }
+      groups.get(name).push(item);
+    });
+    return groups;
+  }, [items]);
+
+  const uniqueItemCount = groupedItems.size;
+  const scannedItemCount = useMemo(() => {
+    let count = 0;
+    groupedItems.forEach((groupItems) => {
+      const target = groupItems.reduce((acc, item) => acc + parseQty(item.qty) + (parseInt(item.fqty) || 0), 0);
+      const scanned = groupItems.reduce((acc, item) => acc + (parseInt(item.scannedQty) || 0), 0);
+      if (scanned >= target && target > 0) {
+        count++;
+      }
+    });
+    return count;
+  }, [groupedItems]);
+
 
   const [elapsedTime, setElapsedTime] = useState(0);
   const expectedTime = totalTargetQty * 2.5;
@@ -42,19 +115,6 @@ const ItemTable = ({ items, isScanningMode, searchTerm, onUpdateQty, onAddBatch,
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
-  const [expandedGroups, setExpandedGroups] = useState(new Set());
-
-  const groupedItems = useMemo(() => {
-    const groups = new Map();
-    items.forEach(item => {
-      const name = item.itemName;
-      if (!groups.has(name)) {
-        groups.set(name, []);
-      }
-      groups.get(name).push(item);
-    });
-    return groups;
-  }, [items]);
 
   const filteredGroups = useMemo(() => {
     const search = searchTerm.toLowerCase();
@@ -133,6 +193,8 @@ const ItemTable = ({ items, isScanningMode, searchTerm, onUpdateQty, onAddBatch,
         if (row) {
           if (row.type === 'group') {
             toggleGroup(row.itemName);
+          } else if (row.type === 'subItem') {
+            onEditItem(row.data);
           } else if (row.type === 'addBatchAction') {
             onAddBatch(row.itemName);
           }
@@ -177,7 +239,7 @@ const ItemTable = ({ items, isScanningMode, searchTerm, onUpdateQty, onAddBatch,
     <div className="w-full flex-1 flex flex-col animate-in fade-in duration-700 overflow-hidden">
 
       {/* Stat Cards Header */}
-      <div className={`w-full grid gap-4 px-10 py-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 animate-in slide-in-from-top-4 duration-700`}>
+      <div className={`w-full grid gap-4 px-10 py-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 animate-in slide-in-from-top-4 duration-700`}>
         {/* Unique Items Card */}
         <div className="bg-indigo-50/40 rounded-[1rem] p-3 border border-indigo-100 flex items-center justify-between transition-all hover:bg-indigo-50 hover:shadow-md active:scale-[0.98]">
           <div className="flex items-center gap-3">
@@ -199,26 +261,12 @@ const ItemTable = ({ items, isScanningMode, searchTerm, onUpdateQty, onAddBatch,
             </div>
             <div>
               <p className="text-purple-400 font-bold text-[8px] uppercase tracking-[0.2em] mb-0.5 leading-tight">Invoice No</p>
-              <h3 className="text-xl font-extrabold text-purple-900 tracking-tight leading-none truncate max-w-[120px]">{billNo || 'N/A'}</h3>
+              <h3 className="text-xl font-extrabold text-purple-900 tracking-tight leading-none">{billNo || 'N/A'}</h3>
             </div>
           </div>
         </div>
 
-        {/* Total Bill Card */}
-        <div className="bg-emerald-50/40 rounded-[1rem] p-3 border border-emerald-100 flex items-center justify-between transition-all hover:bg-emerald-50 hover:shadow-md active:scale-[0.98]">
-          <div className="flex items-center gap-3">
-            <div className="bg-white text-emerald-600 p-2 rounded-lg shadow-sm border border-emerald-100">
-              <IndianRupee size={18} strokeWidth={2.5} />
-            </div>
-            <div>
-              <p className="text-emerald-500 font-bold text-[8px] uppercase tracking-[0.2em] mb-0.5 leading-tight">Invoice Value</p>
-              <h3 className="text-xl font-extrabold text-emerald-900 tracking-tight leading-none">
-                <span className="text-emerald-400 font-medium mr-0.5 tracking-normal italic text-base">₹</span>
-                {totalBillValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </h3>
-            </div>
-          </div>
-        </div>
+
 
         {/* Scan Progress Card */}
         <div className="bg-blue-50/40 rounded-[1rem] p-3 border border-blue-100 flex items-center justify-between transition-all hover:bg-blue-50 hover:shadow-md active:scale-[0.98]">
@@ -227,11 +275,11 @@ const ItemTable = ({ items, isScanningMode, searchTerm, onUpdateQty, onAddBatch,
               <Target size={18} strokeWidth={2.5} />
             </div>
             <div>
-              <p className="text-blue-400 font-bold text-[8px] uppercase tracking-[0.2em] mb-0.5 leading-tight">Scan Progress</p>
+              <p className="text-blue-400 font-bold text-[8px] uppercase tracking-[0.2em] mb-0.5 leading-tight">Items Scanned</p>
               <h3 className="text-xl font-extrabold text-blue-900 tracking-tight leading-none">
-                <span className={totalScanned === totalTargetQty ? 'text-green-600' : 'text-blue-700'}>{totalScanned}</span>
+                <span className={scannedItemCount === uniqueItemCount ? 'text-green-600' : 'text-blue-700'}>{scannedItemCount}</span>
                 <span className="text-blue-300 text-base mx-1 font-medium">/</span>
-                <span className="text-blue-800/60 font-medium">{totalTargetQty}</span>
+                <span className="text-blue-800/60 font-medium">{uniqueItemCount}</span>
               </h3>
             </div>
           </div>
@@ -357,7 +405,7 @@ const ItemTable = ({ items, isScanningMode, searchTerm, onUpdateQty, onAddBatch,
                     }`}
                 >
                   <td className={`px-6 py-4 text-center font-black ${isSelected ? 'text-blue-200' : 'text-gray-400'}`}>
-                    {isSubItem ? '' : index + 1}
+                    {item.sNo || index + 1}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
@@ -367,9 +415,14 @@ const ItemTable = ({ items, isScanningMode, searchTerm, onUpdateQty, onAddBatch,
                         </div>
                       )}
                       {isSubItem && <div className="w-6 h-[2px] bg-gray-200 ml-4 mr-2" />}
-                      <span className={`tracking-tight ${isSubItem ? 'text-lg font-medium opacity-70' : ''}`}>
-                        {isSubItem ? '• ' : ''}{item.itemName}
-                      </span>
+                      {isSubItem && <div className="w-6 h-[2px] bg-gray-200 ml-4 mr-2" />}
+                      <div className={`tracking-tight ${isSubItem ? 'text-lg font-medium opacity-70' : ''}`}>
+                        {isSubItem ? '• ' : ''}
+                        <EditableCell 
+                          value={item.itemName} 
+                          onSave={(val) => onUpdateItemField(item, 'itemName', val)} 
+                        />
+                      </div>
                       {isGroup && (
                         <div className="flex items-center gap-2">
                           {row.isMultiBatch && (
@@ -385,21 +438,39 @@ const ItemTable = ({ items, isScanningMode, searchTerm, onUpdateQty, onAddBatch,
                   <td className="px-6 py-4">
                     <div className={`flex items-center gap-2 font-black ${isSelected ? 'text-blue-200' : isSubItem ? 'text-gray-400' : 'text-blue-600'}`}>
                       <Hash size={16} />
-                      <span className={isSubItem ? 'font-mono' : ''}>{isGroup && row.isMultiBatch ? 'MULTIPLE' : item.batch}</span>
+                      <div className={isSubItem ? 'font-mono' : ''}>
+                        {isGroup && row.isMultiBatch ? 'MULTIPLE' : (
+                          <EditableCell 
+                            value={item.batch} 
+                            onSave={(val) => onUpdateItemField(item, 'batch', val)} 
+                          />
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`text-base ${isSelected ? 'text-indigo-200' : 'text-gray-500'}`}>{item.pack}</span>
+                    <EditableCell 
+                      value={item.pack} 
+                      className={`text-base ${isSelected ? 'text-indigo-200' : 'text-gray-500'}`}
+                      onSave={(val) => onUpdateItemField(item, 'pack', val)}
+                    />
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <span className={`px-3 py-1 rounded text-sm font-black shadow-sm ${isSelected ? 'bg-white/10 text-white border border-white/20' :
+                    <div className={`px-3 py-1 rounded text-sm font-black shadow-sm flex justify-end ${isSelected ? 'bg-white/10 text-white border border-white/20' :
                       'bg-white text-green-700 border border-green-200'
                       }`}>
-                      ₹{typeof item.mrp === 'number' ? item.mrp.toFixed(2) : item.mrp}
-                    </span>
+                      ₹<EditableCell 
+                          value={typeof item.mrp === 'number' ? item.mrp.toFixed(2) : item.mrp} 
+                          type="number"
+                          onSave={(val) => onUpdateItemField(item, 'mrp', parseFloat(val) || 0)}
+                        />
+                    </div>
                   </td>
                   <td className={`px-6 py-4 text-center font-black text-base ${isSelected ? 'text-blue-100' : 'text-gray-500'}`}>
-                    {item.expiry}
+                    <EditableCell 
+                      value={item.expiry} 
+                      onSave={(val) => onUpdateItemField(item, 'expiry', val)}
+                    />
                   </td>
                   {isScanningMode && (
                     <td className="px-6 py-4 text-center">
@@ -434,14 +505,22 @@ const ItemTable = ({ items, isScanningMode, searchTerm, onUpdateQty, onAddBatch,
                     <div className={`inline-flex items-center px-4 py-1.5 rounded-lg border font-black text-lg ${isSelected ? 'bg-white/10 border-white/20 text-white' :
                       'bg-gray-100/50 border-gray-200 text-gray-800'
                       }`}>
-                      {item.fqty || 0}
+                      <EditableCell 
+                        value={item.fqty || 0} 
+                        type="number"
+                        onSave={(val) => onUpdateItemField(item, 'fqty', val)}
+                      />
                     </div>
                   </td>
                   <td className="px-6 py-4 text-center">
                     <div className={`inline-flex items-center px-4 py-1.5 rounded-lg border font-black text-lg ${isSelected ? 'bg-white/10 border-white/20 text-white' :
                       'bg-gray-100/50 border-gray-200 text-gray-800'
                       }`}>
-                      {targetQty}
+                      <EditableCell 
+                        value={targetQty} 
+                        type="number"
+                        onSave={(val) => onUpdateItemField(item, 'qty', val)}
+                      />
                     </div>
                   </td>
                 </tr>

@@ -42,6 +42,14 @@ const mergeDuplicateBatches = (items) => {
   return Array.from(map.values());
 };
 
+const sortAndSerialize = (items) => {
+  return [...items]
+    .map((item, index) => ({
+      ...item,
+      sNo: index + 1
+    }));
+};
+
 const Home = ({
   extractedData,
   setExtractedData,
@@ -53,6 +61,7 @@ const Home = ({
   searchTerm,
   onUpdateQty,
   onAddBatch,
+  onUpdateItemField,
   selectedSupplier,
   setSelectedSupplier,
   billNo,
@@ -64,8 +73,15 @@ const Home = ({
   const handleUploadSuccess = (response, name) => {
     if (response.success && response.data?.items) {
       // Merge duplicate batch entries then initialise scannedQty
-      const rawItems = response.data.items.map(item => ({ ...item, scannedQty: 0 }));
-      const items = mergeDuplicateBatches(rawItems);
+      const rawItems = response.data.items.map(item => ({
+        ...item,
+        dis: item.dis || item.discount || item.Discount || "0",
+        scannedQty: 0,
+        uuid: Math.random().toString(36).substr(2, 9)
+      }));
+      const merged = mergeDuplicateBatches(rawItems);
+      const items = sortAndSerialize(merged);
+
       const bNo = response.data.billno || response.data.bill_no || '';
       setExtractedData(items);
       setBillNo(bNo);
@@ -201,7 +217,7 @@ const Home = ({
             pack: item.pack || '',
             batch: item.batch || '',
             Expiry: item.expiry || '',
-            quantity: item.scannedQty || 0,
+            quantity: item.scannedQty - (item.fqty || 0) || 0,
             freequanti: item.fqty || "0",
             HALFP: "",
             FTrrate: item.rate || 0,
@@ -343,6 +359,7 @@ const Home = ({
             searchTerm={searchTerm}
             onUpdateQty={onUpdateQty}
             onAddBatch={onAddBatch}
+            onUpdateItemField={onUpdateItemField}
             onConfirmAndSave={handleConfirmAndSave}
             onFinishScanning={handleFinishScanning}
             isSending={isSending}
