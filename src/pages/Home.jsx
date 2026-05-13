@@ -220,7 +220,7 @@ const Home = ({
             quantity: item.scannedQty - (item.fqty || 0) || 0,
             freequanti: item.fqty || "0",
             HALFP: "",
-            FTrrate: item.rate || 0,
+            FTrrate: item.ftrate || 0,
             SRate: item.rate || 0,
             mrp: item.mrp || 0,
             Discount: item.dis || "0",
