@@ -62,10 +62,13 @@ const Home = ({
   onUpdateQty,
   onAddBatch,
   onUpdateItemField,
+  onEditItem,
   selectedSupplier,
   setSelectedSupplier,
   billNo,
-  setBillNo
+  setBillNo,
+  poNo,
+  setPoNo
 }) => {
   const [isSending, setIsSending] = useState(false);
   const [sendStatus, setSendStatus] = useState(null); // 'success' | 'error' | null
@@ -205,6 +208,7 @@ const Home = ({
     // Send data to EasySol report API
     const generateReport = async () => {
       try {
+        const currentPoNo = localStorage.getItem('lastPoNo') || '';
         const apiData = extractedData
           .filter(item => (item.scannedQty || 0) > 0)
           .map(item => ({
@@ -220,7 +224,7 @@ const Home = ({
             quantity: item.scannedQty - (item.fqty || 0) || 0,
             freequanti: item.fqty || "0",
             HALFP: "",
-            FTrrate: item.ftrate || 0,
+            FTrate: item.ftrate || item.rate || 0,
             SRate: item.rate || 0,
             mrp: item.mrp || 0,
             Discount: item.dis || "0",
@@ -230,11 +234,12 @@ const Home = ({
             Scm2: "",
             ScmPer: "",
             HSNCode: item.hsn || '',
-            CGST: "",
+            CGST: item.cgst || "0",
             SGST: item.sgst || "0",
-            IGST: item.cgst || "0",
+            IGST: item.igst || "0",
             EOC: "",
-            EOR: ""
+            EOR: "",
+            PONO: currentPoNo,
           }));
 
         console.log('[REPORT PAYLOAD]:', apiData);
@@ -346,7 +351,7 @@ const Home = ({
             <div className="animate-in slide-in-from-bottom-4 duration-500">
               <div className="bg-green-50 text-green-700 px-6 py-3 rounded-full border border-green-200 font-bold text-sm flex items-center gap-2">
                 <CheckCircle2 size={18} />
-                <span>Supplier set! Now click <span className="uppercase text-blue-600">Upload PDF</span> in the header.</span>
+                <span>Supplier set! Now click <span className="uppercase text-blue-600">Upload File</span> in the header.</span>
               </div>
             </div>
           )}
@@ -359,11 +364,13 @@ const Home = ({
             searchTerm={searchTerm}
             onUpdateQty={onUpdateQty}
             onAddBatch={onAddBatch}
+            onEditItem={onEditItem}
             onUpdateItemField={onUpdateItemField}
             onConfirmAndSave={handleConfirmAndSave}
             onFinishScanning={handleFinishScanning}
             isSending={isSending}
             billNo={billNo}
+            poNo={poNo}
           />
         </div>
       )}

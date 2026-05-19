@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { LogOut, User, Scan, Wifi, WifiOff, Trash2, FileText, CheckCircle2, Search, Loader2, Building2 } from 'lucide-react';
+import { LogOut, User, Scan, Wifi, WifiOff, Trash2, FileText, CheckCircle2, Search, Loader2, Building2, Hash } from 'lucide-react';
 
-const Header = ({ onLogout, isScanningMode, fileName, connectionStatus, onReset, hasData, searchTerm, setSearchTerm, onUpload, isUploading, selectedSupplier }) => {
+const Header = ({ onLogout, isScanningMode, fileName, connectionStatus, onReset, hasData, searchTerm, setSearchTerm, onUpload, isUploading, selectedSupplier, poNo }) => {
   const userName = localStorage.getItem('userName') || 'User';
   const searchInputRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -88,6 +88,19 @@ const Header = ({ onLogout, isScanningMode, fileName, connectionStatus, onReset,
               )}
             </div>
           )}
+
+          {/* PO Number Display in Header */}
+          {poNo && (
+            <div className="hidden lg:flex items-center gap-4 pl-6 border-l border-gray-200/60 ml-2 animate-in fade-in slide-in-from-left-4 duration-500">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600">PO Number</span>
+                <div className="flex items-center gap-1.5 text-gray-700 mt-0.5">
+                  <Hash size={14} className="text-amber-400" />
+                  <span className="text-sm font-bold">{poNo}</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {hasData && (
@@ -113,7 +126,7 @@ const Header = ({ onLogout, isScanningMode, fileName, connectionStatus, onReset,
             type="file"
             ref={fileInputRef}
             className="hidden"
-            accept="application/pdf, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+            accept=".csv, text/csv, application/pdf, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
             onChange={handleFileChange}
           />
 

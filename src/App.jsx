@@ -66,6 +66,7 @@ function App() {
     return saved ? JSON.parse(saved) : null
   });
   const [billNo, setBillNo] = useState(() => localStorage.getItem('lastBillNo') || '');
+  const [poNo, setPoNo] = useState(() => localStorage.getItem('lastPoNo') || '');
 
   useEffect(() => {
     if (selectedSupplier) localStorage.setItem('selectedSupplier', JSON.stringify(selectedSupplier));
@@ -562,30 +563,82 @@ function App() {
   const handleDirectUpload = async (file) => {
     if (!file) return;
 
+    if (!selectedSupplier) {
+      Swal.fire({ icon: 'warning', title: 'Supplier Required', text: 'Please select a supplier before uploading.' });
+      return;
+    }
+
+    // Prompt for PO Number
+    const { value: poNumber } = await Swal.fire({
+      title: 'Enter PO Number',
+      input: 'text',
+      inputLabel: 'Purchase Order Number (Optional)',
+      inputValue: poNo,
+      showCancelButton: true,
+      confirmButtonText: 'Next',
+      cancelButtonText: 'Cancel'
+    });
+
+    // If user clicks Cancel, stop the upload
+    if (poNumber === undefined) return;
+
+    setPoNo(poNumber || '');
+    localStorage.setItem('lastPoNo', poNumber || '');
+
     const isPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    // ... (rest of the check)
     const isExcel = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
       file.type === 'application/vnd.ms-excel' ||
+      file.type === 'text/csv' ||
       file.name.toLowerCase().endsWith('.xlsx') ||
-      file.name.toLowerCase().endsWith('.xls');
+      file.name.toLowerCase().endsWith('.xls') ||
+      file.name.toLowerCase().endsWith('.csv');
 
     if (!isPDF && !isExcel) {
-      Swal.fire({ icon: 'error', title: 'Invalid File', text: 'Please upload a PDF or Excel file.' });
+      Swal.fire({ icon: 'error', title: 'Invalid File', text: 'Please upload a PDF, Excel, or CSV file.' });
       return;
     }
 
     setIsUploading(true);
-    const formData = new FormData();
-
-    // For PDF, the field name is 'pdf'. For sheets, it's also usually 'pdf' or 'file'? 
-    // The user said "rest of things are same", so I'll keep the field name as 'pdf' or adjust if needed.
-    // Actually, looking at the previous PDF code, it used 'pdf'.
-    formData.append(isPDF ? 'pdf' : 'sheet', file);
-
-    const endpoint = isPDF
-      ? 'http://192.168.1.110:3007/extract-invoice-items-from-pdf'
-      : 'http://192.168.1.110:3007/extract-invoice-items-from-sheet';
 
     try {
+      // Step 1: Mark PO as received (Only if PO number is provided)
+      if (poNumber) {
+        console.log('Marking PO as received...', { acno: selectedSupplier.VCode, pono: poNumber });
+        const markPoResponse = await fetch('http://192.168.1.110:3000/api/ocr/mark-po-as-received', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            acno: selectedSupplier.VCode,
+            pono: poNumber
+          })
+        });
+
+        if (!markPoResponse.ok) {
+          const errorData = await markPoResponse.json().catch(() => ({}));
+          Swal.fire({
+            icon: 'error',
+            title: 'PO Verification Failed',
+            text: errorData.message || `The PO service responded with status ${markPoResponse.status} (Not Found). Please check the server connection.`,
+            confirmButtonColor: '#2563eb'
+          });
+          setIsUploading(false);
+          return; // Stop the flow
+        }
+        console.log('PO marked as received successfully');
+      }
+
+      // Step 2: Extraction
+      const formData = new FormData();
+      formData.append(isPDF ? 'pdf' : 'sheet', file);
+
+      const endpoint = isPDF
+        ? 'http://192.168.1.110:3007/extract-invoice-items-from-pdf'
+        : 'http://192.168.1.110:3007/extract-invoice-items-from-sheet';
+
       const response = await fetch(endpoint, {
         method: 'POST',
         body: formData
@@ -660,11 +713,13 @@ function App() {
 
     setExtractedData(null)
     setBillNo('')
+    setPoNo('')
     setFileName(null)
     setIsScanningMode(false)
     disconnectSocket()
     localStorage.removeItem('extractedInvoiceItems')
     localStorage.removeItem('lastBillNo')
+    localStorage.removeItem('lastPoNo')
     localStorage.removeItem('lastInvoiceName')
     localStorage.removeItem('lastExtractionDate')
     localStorage.removeItem('scanStartTime')
@@ -692,6 +747,7 @@ function App() {
         onUpload={handleDirectUpload}
         isUploading={isUploading}
         selectedSupplier={selectedSupplier}
+        poNo={poNo}
       />
       <main className="flex-1 w-full overflow-hidden">
         <Home
@@ -711,6 +767,8 @@ function App() {
           setSelectedSupplier={setSelectedSupplier}
           billNo={billNo}
           setBillNo={setBillNo}
+          poNo={poNo}
+          setPoNo={setPoNo}
         />
       </main>
     </div>

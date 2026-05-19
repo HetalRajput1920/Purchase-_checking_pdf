@@ -47,7 +47,7 @@ const EditableCell = ({ value, onSave, type = "text", className = "" }) => {
   }
 
   return (
-    <div 
+    <div
       className={`cursor-pointer hover:bg-blue-400/20 rounded px-2 py-1 transition-all border border-transparent hover:border-blue-400/30 ${className}`}
       onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
     >
@@ -56,7 +56,7 @@ const EditableCell = ({ value, onSave, type = "text", className = "" }) => {
   );
 };
 
-const ItemTable = ({ items, isScanningMode, searchTerm, onUpdateQty, onAddBatch, onUpdateItemField, onConfirmAndSave, onFinishScanning, isSending, billNo }) => {
+const ItemTable = ({ items, isScanningMode, searchTerm, onUpdateQty, onAddBatch, onEditItem, onUpdateItemField, onConfirmAndSave, onFinishScanning, isSending, billNo, poNo }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const totalItems = items.length;
@@ -418,9 +418,9 @@ const ItemTable = ({ items, isScanningMode, searchTerm, onUpdateQty, onAddBatch,
                       {isSubItem && <div className="w-6 h-[2px] bg-gray-200 ml-4 mr-2" />}
                       <div className={`tracking-tight ${isSubItem ? 'text-lg font-medium opacity-70' : ''}`}>
                         {isSubItem ? '• ' : ''}
-                        <EditableCell 
-                          value={item.itemName} 
-                          onSave={(val) => onUpdateItemField(item, 'itemName', val)} 
+                        <EditableCell
+                          value={item.itemName}
+                          onSave={(val) => onUpdateItemField(item, 'itemName', val)}
                         />
                       </div>
                       {isGroup && (
@@ -440,17 +440,17 @@ const ItemTable = ({ items, isScanningMode, searchTerm, onUpdateQty, onAddBatch,
                       <Hash size={16} />
                       <div className={isSubItem ? 'font-mono' : ''}>
                         {isGroup && row.isMultiBatch ? 'MULTIPLE' : (
-                          <EditableCell 
-                            value={item.batch} 
-                            onSave={(val) => onUpdateItemField(item, 'batch', val)} 
+                          <EditableCell
+                            value={item.batch}
+                            onSave={(val) => onUpdateItemField(item, 'batch', val)}
                           />
                         )}
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <EditableCell 
-                      value={item.pack} 
+                    <EditableCell
+                      value={item.pack}
                       className={`text-base ${isSelected ? 'text-indigo-200' : 'text-gray-500'}`}
                       onSave={(val) => onUpdateItemField(item, 'pack', val)}
                     />
@@ -459,16 +459,16 @@ const ItemTable = ({ items, isScanningMode, searchTerm, onUpdateQty, onAddBatch,
                     <div className={`px-3 py-1 rounded text-sm font-black shadow-sm flex justify-end ${isSelected ? 'bg-white/10 text-white border border-white/20' :
                       'bg-white text-green-700 border border-green-200'
                       }`}>
-                      ₹<EditableCell 
-                          value={typeof item.mrp === 'number' ? item.mrp.toFixed(2) : item.mrp} 
-                          type="number"
-                          onSave={(val) => onUpdateItemField(item, 'mrp', parseFloat(val) || 0)}
-                        />
+                      ₹<EditableCell
+                        value={typeof item.mrp === 'number' ? item.mrp.toFixed(2) : item.mrp}
+                        type="number"
+                        onSave={(val) => onUpdateItemField(item, 'mrp', parseFloat(val) || 0)}
+                      />
                     </div>
                   </td>
                   <td className={`px-6 py-4 text-center font-black text-base ${isSelected ? 'text-blue-100' : 'text-gray-500'}`}>
-                    <EditableCell 
-                      value={item.expiry} 
+                    <EditableCell
+                      value={item.expiry}
                       onSave={(val) => onUpdateItemField(item, 'expiry', val)}
                     />
                   </td>
@@ -505,8 +505,8 @@ const ItemTable = ({ items, isScanningMode, searchTerm, onUpdateQty, onAddBatch,
                     <div className={`inline-flex items-center px-4 py-1.5 rounded-lg border font-black text-lg ${isSelected ? 'bg-white/10 border-white/20 text-white' :
                       'bg-gray-100/50 border-gray-200 text-gray-800'
                       }`}>
-                      <EditableCell 
-                        value={item.fqty || 0} 
+                      <EditableCell
+                        value={item.fqty || 0}
                         type="number"
                         onSave={(val) => onUpdateItemField(item, 'fqty', val)}
                       />
@@ -516,8 +516,8 @@ const ItemTable = ({ items, isScanningMode, searchTerm, onUpdateQty, onAddBatch,
                     <div className={`inline-flex items-center px-4 py-1.5 rounded-lg border font-black text-lg ${isSelected ? 'bg-white/10 border-white/20 text-white' :
                       'bg-gray-100/50 border-gray-200 text-gray-800'
                       }`}>
-                      <EditableCell 
-                        value={targetQty} 
+                      <EditableCell
+                        value={targetQty}
                         type="number"
                         onSave={(val) => onUpdateItemField(item, 'qty', val)}
                       />
