@@ -1,10 +1,34 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { LogOut, User, Scan, Wifi, WifiOff, Trash2, FileText, CheckCircle2, Search, Loader2, Building2, Hash } from 'lucide-react';
 
 const Header = ({ onLogout, isScanningMode, fileName, connectionStatus, onReset, hasData, searchTerm, setSearchTerm, onUpload, isUploading, selectedSupplier, poNo }) => {
   const userName = localStorage.getItem('userName') || 'User';
   const searchInputRef = useRef(null);
   const fileInputRef = useRef(null);
+  const [leaderboardData, setLeaderboardData] = useState(null);
+
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://192.168.1.110:3000/api/ocr/get-ocr-checker-leaderboard', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.length > 0) {
+            setLeaderboardData(data[0]);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch leaderboard:', error);
+      }
+    };
+    
+    fetchLeaderboard();
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -97,6 +121,29 @@ const Header = ({ onLogout, isScanningMode, fileName, connectionStatus, onReset,
                 <div className="flex items-center gap-1.5 text-gray-700 mt-0.5">
                   <Hash size={14} className="text-amber-400" />
                   <span className="text-sm font-bold">{poNo}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Leaderboard Data Display */}
+          {leaderboardData && (
+            <div className="hidden lg:flex items-center gap-4 pl-6 border-l border-gray-200/60 ml-2 animate-in fade-in slide-in-from-left-4 duration-500">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-600">Overview</span>
+                <div className="flex items-center gap-3 text-gray-700 mt-0.5">
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs font-semibold text-gray-500">Bills:</span>
+                    <span className="text-sm font-bold">{leaderboardData.BillCnt}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs font-semibold text-gray-500">Items:</span>
+                    <span className="text-sm font-bold">{leaderboardData.ItemCnt}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs font-semibold text-gray-500">Qty:</span>
+                    <span className="text-sm font-bold">{leaderboardData.Qty}</span>
+                  </div>
                 </div>
               </div>
             </div>

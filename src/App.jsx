@@ -103,7 +103,13 @@ function App() {
       const newData = prevData.map(item => {
         if (item.itemName === targetItem.itemName && item.batch === targetItem.batch) {
           const current = item.scannedQty || 0;
-          return { ...item, scannedQty: Math.max(0, current + change) };
+          const newScannedQty = Math.max(0, current + change);
+          const actualChange = newScannedQty - current;
+          return { 
+            ...item, 
+            scannedQty: newScannedQty,
+            manual_count: Math.max(0, (item.manual_count || 0) + actualChange)
+          };
         }
         return item;
       });
@@ -455,7 +461,7 @@ function App() {
         if (existingBatchIndex !== -1) {
           // Increment existing batch scannedQty
           newData = prevData.map((item, idx) =>
-            idx === existingBatchIndex ? { ...item, scannedQty: (item.scannedQty || 0) + 1 } : item
+            idx === existingBatchIndex ? { ...item, scannedQty: (item.scannedQty || 0) + 1, scan_count: (item.scan_count || 0) + 1 } : item
           );
 
           // Show info toast for non-batch mismatches (e.g., pack mismatch) so user is aware
@@ -486,6 +492,8 @@ function App() {
             qty: "0",
             fqty: "0",
             scannedQty: 1,
+            scan_count: 1,
+            manual_count: 0,
             uuid: Math.random().toString(36).substr(2, 9)
           };
           newData = sortAndSerialize([...prevData, newBatchEntry]);
@@ -632,6 +640,17 @@ function App() {
       }
 
       // Step 2: Extraction
+      Swal.fire({
+        title: 'Extracting...',
+        text: 'The file is extracting, please wait. It will take a few seconds.',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
       const formData = new FormData();
       formData.append(isPDF ? 'pdf' : 'sheet', file);
 

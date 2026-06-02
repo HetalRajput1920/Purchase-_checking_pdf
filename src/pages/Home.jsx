@@ -240,6 +240,8 @@ const Home = ({
             EOC: "",
             EOR: "",
             PONO: currentPoNo,
+            manual_count: item.manual_count || 0,
+            scan_count: item.scan_count || 0,
           }));
 
         console.log('[REPORT PAYLOAD]:', apiData);

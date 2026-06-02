@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { apiClient } from '../api/apiClient';
 import { Upload, Loader2, FileText } from 'lucide-react';
 import Swal from 'sweetalert2';
@@ -6,6 +6,8 @@ import Swal from 'sweetalert2';
 const PdfUploader = ({ onUploadSuccess }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const progressIntervalRef = useRef(null);
 
   const handleUpload = async (file) => {
     if (!file) return;
@@ -21,14 +23,46 @@ const PdfUploader = ({ onUploadSuccess }) => {
     }
 
     setIsUploading(true);
+    setProgress(0);
 
     const startTime = performance.now();
     console.group(`[API Request] PDF Extraction: ${file.name}`);
     console.log('Timestamp:', new Date().toISOString());
-    console.log('Endpoint:', 'http://192.168.1.110:3008/extract-invoice-items-from-pdf');
+    console.log('Endpoint:', 'http://192.168.1.110:3007/extract-invoice-items-from-pdf');
+
+    // Gmail-style simulated progress sequence
+    progressIntervalRef.current = setInterval(() => {
+      setProgress((prev) => {
+        if (prev < 40) {
+          // Fast starting phase
+          return prev + Math.floor(Math.random() * 12) + 6;
+        } else if (prev < 75) {
+          // Normal intermediate progress
+          return prev + Math.floor(Math.random() * 4) + 2;
+        } else if (prev < 92) {
+          // Slow down near the end of expected time
+          return prev + Math.floor(Math.random() * 2) + 1;
+        } else if (prev < 98) {
+          // Slowest crawl while waiting for API completion
+          return prev + 0.4;
+        }
+        return prev;
+      });
+    }, 300);
 
     const formData = new FormData();
     formData.append('pdf', file);
+
+    Swal.fire({
+      title: 'Extracting...',
+      text: 'The file is extracting, please wait. It will take a few seconds.',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      showConfirmButton: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
 
     try {
       const result = await apiClient.upload(
@@ -36,12 +70,29 @@ const PdfUploader = ({ onUploadSuccess }) => {
         formData
       );
 
+      Swal.close();
+
+      // Success: Clear interval and finish progress bar to 100%
+      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+      setProgress(100);
+      
+      // Short delay for visual completion before firing callbacks
+      await new Promise(resolve => setTimeout(resolve, 400));
+
       const duration = (performance.now() - startTime).toFixed(2);
       console.log(`Success in ${duration}ms`);
       console.log('Response Data:', result);
 
       onUploadSuccess(result, file.name);
     } catch (err) {
+      Swal.close();
+
+      // Error: Force finish bar
+      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+      setProgress(100);
+      
+      await new Promise(resolve => setTimeout(resolve, 400));
+
       const duration = (performance.now() - startTime).toFixed(2);
       console.error(`Failed after ${duration}ms`);
       console.error('Error Details:', err);
@@ -59,10 +110,19 @@ const PdfUploader = ({ onUploadSuccess }) => {
         footer: 'Check if the OCR server at 1.110:3008 is running.'
       });
     } finally {
+      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
       console.groupEnd();
       setIsUploading(false);
+      setProgress(0);
     }
   };
+
+  // Clean up interval on component unmount
+  useEffect(() => {
+    return () => {
+      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+    };
+  }, []);
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -97,9 +157,21 @@ const PdfUploader = ({ onUploadSuccess }) => {
         onDragOver={handleDrag}
         onDrop={handleDrop}
       >
-        {/* Animated Gradient Border effect when uploading */}
+        {/* Gmail-style progress bar pinned to the top edge */}
         {isUploading && (
-          <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(59,130,246,0.1)_50%,transparent_75%)] bg-[length:250%_250%] animate-[gradient_2s_linear_infinite]" />
+          <div className="absolute top-0 left-0 right-0 h-1.5 bg-blue-50/60 overflow-hidden z-20">
+            <div 
+              className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 transition-all duration-300 ease-out shadow-[0_0_12px_rgba(59,130,246,0.6)]"
+              style={{ width: `${progress}%` }}
+            />
+            {/* Horizontal shimmer effect inside progress bar */}
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.45)_50%,transparent_100%)] animate-[shimmer_1.5s_infinite] w-[50%]" />
+          </div>
+        )}
+
+        {/* Animated Background Gradient overlay when uploading */}
+        {isUploading && (
+          <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(59,130,246,0.05)_50%,transparent_75%)] bg-[length:250%_250%] animate-[gradient_2s_linear_infinite]" />
         )}
 
         {isUploading ? (
@@ -113,7 +185,7 @@ const PdfUploader = ({ onUploadSuccess }) => {
             </div>
             <div className="space-y-3">
               <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-700">Processing Invoice</h3>
-              <p className="text-gray-500 font-bold text-lg animate-pulse">Extracting line items using AI...</p>
+              <p className="text-gray-500 font-bold text-lg animate-pulse">Extracting line items using AI ({Math.round(progress)}%)...</p>
             </div>
           </div>
         ) : (
@@ -137,6 +209,14 @@ const PdfUploader = ({ onUploadSuccess }) => {
           </div>
         )}
       </div>
+
+      {/* Styled JSX block for the shimmer animation keyframe */}
+      <style>{`
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(200%); }
+        }
+      `}</style>
     </div>
   );
 };
