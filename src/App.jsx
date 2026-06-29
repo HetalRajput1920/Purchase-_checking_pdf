@@ -18,7 +18,14 @@ const parseQty = (qtyStr) => {
 const mergeDuplicateBatches = (items) => {
   const map = new Map();
   items.forEach(item => {
-    const key = item.batch?.trim();
+    const name = String(item.itemName || '').trim().toLowerCase();
+    const batch = String(item.batch || '').trim().toLowerCase();
+    const dis = Number(parseFloat(item.dis || item.discount || item.Discount || 0));
+    const ftrate = Number(parseFloat(item.ftrate || item.rate || 0));
+
+    // Only merge if batch is present
+    const key = batch ? `${name}|${batch}|${dis}|${ftrate}` : null;
+    
     if (!key || !map.has(key)) {
       map.set(key || Symbol(), { ...item });
     } else {
@@ -101,7 +108,11 @@ function App() {
       }
 
       const newData = prevData.map(item => {
-        if (item.itemName === targetItem.itemName && item.batch === targetItem.batch) {
+        const isMatch = targetItem.uuid 
+          ? item.uuid === targetItem.uuid 
+          : (item.itemName === targetItem.itemName && item.batch === targetItem.batch);
+
+        if (isMatch) {
           const current = item.scannedQty || 0;
           const newScannedQty = Math.max(0, current + change);
           const actualChange = newScannedQty - current;

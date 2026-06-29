@@ -58,6 +58,7 @@ const EditableCell = ({ value, onSave, type = "text", className = "" }) => {
 
 const ItemTable = ({ items, isScanningMode, searchTerm, onUpdateQty, onAddBatch, onEditItem, onUpdateItemField, onConfirmAndSave, onFinishScanning, isSending, billNo, poNo }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const containerRef = React.useRef(null);
 
   const totalItems = items.length;
   const totalTargetQty = items.reduce((acc, item) => acc + parseQty(item.qty) + (parseInt(item.fqty) || 0), 0);
@@ -215,10 +216,30 @@ const ItemTable = ({ items, isScanningMode, searchTerm, onUpdateQty, onAddBatch,
 
       if (newIndex !== selectedIndex) {
         setSelectedIndex(newIndex);
-        const rowElement = document.getElementById(`row-${newIndex}`);
-        if (rowElement) {
-          rowElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+        setTimeout(() => {
+          const container = containerRef.current;
+          const rowElement = document.getElementById(`row-${newIndex}`);
+          if (container && rowElement) {
+            const containerRect = container.getBoundingClientRect();
+            const rowRect = rowElement.getBoundingClientRect();
+            
+            const padding = 20; // safe zone padding at top and bottom
+            const isAbove = rowRect.top < containerRect.top + padding;
+            const isBelow = rowRect.bottom > containerRect.bottom - padding;
+            
+            if (isAbove) {
+              container.scrollTo({
+                top: container.scrollTop + (rowRect.top - containerRect.top) - padding,
+                behavior: 'smooth'
+              });
+            } else if (isBelow) {
+              container.scrollTo({
+                top: container.scrollTop + (rowRect.bottom - containerRect.bottom) + padding,
+                behavior: 'smooth'
+              });
+            }
+          }
+        }, 0);
       }
     };
 
@@ -326,7 +347,7 @@ const ItemTable = ({ items, isScanningMode, searchTerm, onUpdateQty, onAddBatch,
         </div>
       </div>
       {/* Scrollable Table Section - Premium Edge-to-Edge */}
-      <div className="w-full flex-1 overflow-y-auto min-h-0 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+      <div ref={containerRef} className="w-full flex-1 overflow-y-auto min-h-0 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="sticky top-0 z-20 bg-gray-900 backdrop-blur-md text-gray-200 text-sm font-black uppercase tracking-[0.15em] shadow-lg border-b border-gray-800">
@@ -335,6 +356,8 @@ const ItemTable = ({ items, isScanningMode, searchTerm, onUpdateQty, onAddBatch,
               <th className="px-6 py-3.5">Batch ID</th>
               <th className="px-6 py-3.5">Pack</th>
               <th className="px-6 py-3.5 text-right w-40">MRP</th>
+              <th className="px-6 py-3.5 text-right w-40">F.Rate</th>
+              <th className="px-6 py-3.5 text-right w-36">Discount</th>
               <th className="px-6 py-3.5 text-center w-36">Expiry</th>
               {isScanningMode && <th className="px-6 py-3.5 text-center w-36 text-blue-400">Scanned</th>}
               <th className="px-6 py-3.5 text-center w-32">Free Qty</th>
@@ -357,12 +380,12 @@ const ItemTable = ({ items, isScanningMode, searchTerm, onUpdateQty, onAddBatch,
                       setSelectedIndex(index);
                       onAddBatch(row.itemName);
                     }}
-                    className={`group transition-all duration-200 cursor-pointer text-xl font-bold border-l-[6px] border-b border-purple-200 shadow-sm ${isSelected ? 'bg-gradient-to-r from-emerald-600 to-green-600 text-white border-emerald-900 shadow-xl relative z-10 scale-[1.002]' :
+                    className={`group transition-all duration-200 cursor-pointer text-xl font-bold border-l-[6px] border-b border-purple-200 shadow-sm animate-row-enter ${isSelected ? 'bg-gradient-to-r from-emerald-600 to-green-600 text-white border-emerald-900 shadow-xl relative z-10 scale-[1.002]' :
                       'bg-purple-50/40 text-purple-600 hover:bg-purple-100/50'
                       }`}
                   >
                     <td className="px-6 py-4"></td>
-                    <td className="px-6 py-4" colSpan={isScanningMode ? "8" : "7"}>
+                    <td className="px-6 py-4" colSpan={isScanningMode ? "10" : "9"}>
                       <div className="flex items-center gap-3 ml-12">
                         <div className={`p-1.5 rounded-full ${isSelected ? 'bg-white text-emerald-600' : 'bg-purple-100 text-purple-600'}`}>
                           <Plus size={16} strokeWidth={3} />
@@ -392,12 +415,12 @@ const ItemTable = ({ items, isScanningMode, searchTerm, onUpdateQty, onAddBatch,
               return (
                 <tr
                   id={`row-${index}`}
-                  key={`${row.itemName}-${isSubItem ? item.batch : 'parent'}`}
+                  key={`${row.itemName}-${isSubItem ? (item.uuid || item.batch) : 'parent'}`}
                   onClick={() => {
                     setSelectedIndex(index);
                     if (isGroup) toggleGroup(row.itemName);
                   }}
-                  className={`group transition-all duration-200 cursor-pointer text-xl font-bold border-l-[6px] border-b border-gray-300 shadow-sm ${isSelected ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-900 shadow-xl relative z-10 scale-[1.002]' :
+                  className={`group transition-all duration-200 cursor-pointer text-xl font-bold border-l-[6px] border-b border-gray-300 shadow-sm animate-row-enter ${isSelected ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-900 shadow-xl relative z-10 scale-[1.002]' :
                     isSubItem ? 'bg-purple-50/60 text-purple-900 border-purple-200 hover:bg-purple-100/60' :
                       isFullyScanned ? 'bg-green-50/80 text-gray-900 border-green-500' :
                         isPartiallyScanned ? 'bg-orange-50/80 text-gray-900 border-orange-400' :
@@ -466,6 +489,28 @@ const ItemTable = ({ items, isScanningMode, searchTerm, onUpdateQty, onAddBatch,
                       />
                     </div>
                   </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className={`px-3 py-1 rounded text-sm font-black shadow-sm flex justify-end ${isSelected ? 'bg-white/10 text-white border border-white/20' :
+                      'bg-white text-blue-700 border border-blue-200'
+                      }`}>
+                      ₹<EditableCell
+                        value={typeof item.ftrate === 'number' ? item.ftrate.toFixed(2) : parseFloat(item.ftrate || item.rate || 0).toFixed(2)}
+                        type="number"
+                        onSave={(val) => onUpdateItemField(item, 'ftrate', parseFloat(val) || 0)}
+                      />
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className={`px-3 py-1 rounded text-sm font-black shadow-sm flex justify-end ${isSelected ? 'bg-white/10 text-white border border-white/20' :
+                      'bg-white text-orange-700 border border-orange-200'
+                      }`}>
+                      <EditableCell
+                        value={item.dis || item.discount || item.Discount || "0"}
+                        onSave={(val) => onUpdateItemField(item, 'dis', val)}
+                      />
+                      <span className="ml-0.5">%</span>
+                    </div>
+                  </td>
                   <td className={`px-6 py-4 text-center font-black text-base ${isSelected ? 'text-blue-100' : 'text-gray-500'}`}>
                     <EditableCell
                       value={item.expiry}
@@ -528,7 +573,7 @@ const ItemTable = ({ items, isScanningMode, searchTerm, onUpdateQty, onAddBatch,
             })}
             {visibleRows.length === 0 && (
               <tr>
-                <td colSpan={isScanningMode ? "9" : "8"} className="px-4 py-20 text-center text-gray-400 italic text-lg font-bold bg-gray-50/50">
+                <td colSpan={isScanningMode ? "11" : "10"} className="px-4 py-20 text-center text-gray-400 italic text-lg font-bold bg-gray-50/50">
                   No items match your search.
                 </td>
               </tr>

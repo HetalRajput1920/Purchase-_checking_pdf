@@ -18,7 +18,13 @@ const mergeDuplicateBatches = (items) => {
   const map = new Map();
 
   items.forEach(item => {
-    const key = item.batch?.trim();
+    const name = String(item.itemName || '').trim().toLowerCase();
+    const batch = String(item.batch || '').trim().toLowerCase();
+    const dis = Number(parseFloat(item.dis || item.discount || item.Discount || 0));
+    const ftrate = Number(parseFloat(item.ftrate || item.rate || 0));
+
+    // Only merge if batch is present
+    const key = batch ? `${name}|${batch}|${dis}|${ftrate}` : null;
 
     if (!key || !map.has(key)) {
       // First occurrence — clone and store
